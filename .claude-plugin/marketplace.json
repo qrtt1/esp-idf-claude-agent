@@ -1,0 +1,21 @@
+{
+  "name": "esp-idf-claude-agent",
+  "description": "ESP-IDF development tools and agents for Claude Code",
+  "owner": {
+    "name": "qrtt1"
+  },
+  "plugins": [
+    {
+      "name": "esp-idf-claude-agent",
+      "description": "ESP32 full-cycle development assistant for Claude Code (all ESP-IDF targets). Auto-detects environment, orchestrates build/flash/monitor, analyzes logs, and fixes code with sub-agent architecture.",
+      "version": "0.1.0",
+      "source": "./",
+      "author": {
+        "name": "qrtt1"
+      },
+      "repository": "https://github.com/qrtt1/esp-idf-claude-agent",
+      "license": "MIT",
+      "keywords": ["esp32", "esp-idf", "embedded", "firmware", "iot", "espressif"]
+    }
+  ]
+}

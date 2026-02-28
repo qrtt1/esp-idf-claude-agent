@@ -1,0 +1,75 @@
+#!/usr/bin/env bash
+# SessionStart hook for esp-idf-claude-agent plugin
+
+set -euo pipefail
+
+# Escape string for JSON embedding
+escape_for_json() {
+    local s="$1"
+    s="${s//\\/\\\\}"
+    s="${s//\"/\\\"}"
+    s="${s//$'\n'/\\n}"
+    s="${s//$'\r'/\\r}"
+    s="${s//$'\t'/\\t}"
+    printf '%s' "$s"
+}
+
+# Build context message
+context_message=""
+warning_message=""
+
+# Check 1: Is IDF_PATH set?
+if [[ -z "${IDF_PATH:-}" ]]; then
+    warning_message="⚠️ ESP-IDF ENVIRONMENT NOT CONFIGURED\n\nThe IDF_PATH environment variable is NOT set. Please run:\n\`\`\`bash\nsource \$HOME/esp/*/esp-idf/export.sh\n\`\`\`\n\nOr use your alias (e.g., \`enable-esp\`) to activate the ESP-IDF environment."
+else
+    # Check 2: Does idf.py exist?
+    if ! command -v idf.py &> /dev/null; then
+        warning_message="⚠️ ESP-IDF TOOLS NOT READY\n\nIDF_PATH is set to \`${IDF_PATH}\`, but \`idf.py\` command is NOT available.\n\nPlease verify that the environment is properly loaded."
+    else
+        # Environment is OK, check if current directory is an ESP-IDF project
+        is_esp_project=false
+
+        # Check for ESP-IDF project indicators
+        if [[ -f "sdkconfig" ]] || [[ -f "sdkconfig.defaults" ]] || [[ -f "CMakeLists.txt" && -d "main" ]]; then
+            is_esp_project=true
+        fi
+
+        if [[ "$is_esp_project" == true ]]; then
+            context_message="💡 ESP-IDF project detected in current directory.\n\nConsider using the ESP32 development agent for assistance:\n\n\`\`\`bash\nclaude --agent esp-idf-claude-agent:esp32-dev\n\`\`\`\n\nThe agent handles environment setup, build, flash, log analysis, and iterative development automatically.\n\n⚠️ CRITICAL: When working with serial monitor, you MUST ONLY use \`idf.py monitor\` (run in background with \`script -F log.txt\`). Do NOT use minicom, screen, pyserial, or any other serial reader. This is MANDATORY for proper backtrace decoding and ESP32 log analysis."
+        fi
+    fi
+fi
+
+# Combine messages
+if [[ -n "$warning_message" ]]; then
+    session_context="<important-reminder>${warning_message}</important-reminder>"
+elif [[ -n "$context_message" ]]; then
+    session_context="<helpful-hint>${context_message}</helpful-hint>"
+else
+    # No special message, exit with empty context
+    cat <<EOF
+{
+  "additional_context": "",
+  "hookSpecificOutput": {
+    "hookEventName": "SessionStart",
+    "additionalContext": ""
+  }
+}
+EOF
+    exit 0
+fi
+
+# Escape and output
+session_context_escaped=$(escape_for_json "$session_context")
+
+cat <<EOF
+{
+  "additional_context": "${session_context_escaped}",
+  "hookSpecificOutput": {
+    "hookEventName": "SessionStart",
+    "additionalContext": "${session_context_escaped}"
+  }
+}
+EOF
+
+exit 0
