@@ -120,3 +120,80 @@ pkill -f "script.*log.txt"
 | `[W]` | Warning | 🟡 |
 | `[I]` | Info | ⚪ |
 | `WiFi connected` / `got ip` | Connection success | ✅ |
+
+## Component Architecture
+
+ESP-IDF supports modular component architecture for better code organization and reusability.
+
+### Project Structures
+
+**Monolithic Structure** (simple projects):
+```
+my_project/
+├── CMakeLists.txt
+└── main/
+    ├── CMakeLists.txt
+    └── main.c              # All code in one file
+```
+
+**Component Structure** (recommended for complex projects):
+```
+my_project/
+├── CMakeLists.txt
+├── main/
+│   ├── CMakeLists.txt
+│   └── main.c              # Orchestration only
+└── components/             # Reusable modules
+    ├── wifi_utils/
+    │   ├── CMakeLists.txt
+    │   ├── include/wifi_utils.h
+    │   └── wifi_utils.c
+    ├── api_client/
+    │   ├── CMakeLists.txt
+    │   ├── include/api_client.h
+    │   └── api_client.c
+    └── beacon_utils/
+        ├── CMakeLists.txt
+        ├── include/beacon_utils.h
+        └── beacon_utils.c
+```
+
+### When to Componentize
+
+| Code Size | Action |
+|:----------|:-------|
+| < 150 lines | Keep in main.c (monolithic is fine) |
+| 150-299 lines | Consider planning componentization |
+| 300-499 lines | Recommend refactoring soon |
+| 500+ lines | Strongly recommend componentizing now |
+
+### Component CMakeLists.txt Template
+
+```cmake
+idf_component_register(
+    SRCS "wifi_utils.c"                    # Source files
+    INCLUDE_DIRS "include"                  # Public headers
+    PRIV_REQUIRES esp_wifi nvs_flash       # Private dependencies
+)
+```
+
+### Common ESP-IDF Components
+
+| Component | Usage |
+|:----------|:------|
+| `esp_wifi` | WiFi functionality |
+| `esp_http_client` | HTTP client |
+| `esp_http_server` | HTTP server |
+| `nvs_flash` | Non-volatile storage |
+| `bt` | Bluetooth/BLE |
+| `mqtt` | MQTT protocol |
+| `json` | JSON parsing (cJSON) |
+| `mbedtls` | Cryptography |
+
+### Refactoring Best Practices
+
+1. **One component at a time** - Refactor incrementally, not all at once
+2. **Build verification** - Verify build after each step
+3. **Keep functions together** - Group related functions in same component
+4. **Clear interfaces** - Well-defined public headers
+5. **Minimal dependencies** - Components should be as independent as possible

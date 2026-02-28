@@ -8,6 +8,7 @@ ESP32 full-cycle development assistant for [Claude Code](https://claude.com/clau
 - **Sub-agent architecture** — each task runs in an isolated context, keeping the main conversation clean
 - **Smart iteration loop** — build → flash → analyze → fix → repeat (up to 5 rounds)
 - **ESP-IDF example lookup** — searches official examples and extracts code patterns for you
+- **Code refactoring assistant** — analyzes code structure and guides you through component extraction
 - **Cross-platform** — works on macOS and Linux
 
 ## Prerequisites
@@ -60,7 +61,9 @@ skills/esp32-dev/
     ├── builder.md           ← Build + Flash + Monitor (Bash agent)
     ├── log-analyzer.md      ← Serial log analysis (Explore agent, haiku)
     ├── example-finder.md    ← ESP-IDF example lookup (Explore agent, haiku)
-    └── fixer.md             ← Code modification (general-purpose agent)
+    ├── fixer.md             ← Code modification (general-purpose agent)
+    ├── code-advisor.md      ← Code structure analysis (Explore agent, haiku)
+    └── component-helper.md  ← Component extraction guide (general-purpose agent)
 ```
 
 ### How it works
@@ -93,6 +96,41 @@ No hardcoded paths. The setup sub-agent auto-detects:
 | ESP-IDF version | `idf.py --version` |
 
 Just make sure you've sourced `export.sh` before starting Claude Code.
+
+## Code Refactoring Assistant
+
+The agent can help you refactor monolithic code into modular components.
+
+### Automatic Analysis
+
+When your `main.c` grows beyond 200 lines, the agent automatically analyzes your code structure and suggests componentization:
+
+```
+✅ Build successful!
+
+📊 Code Analysis: main.c has 350 lines, 18 functions
+
+💡 Identified Modules:
+   1. wifi_utils (5 functions, ~90 lines)
+   2. api_client (6 functions, ~140 lines)
+   3. beacon_utils (4 functions, ~80 lines)
+
+Would you like help creating these components?
+```
+
+### Guided Component Extraction
+
+The agent guides you through a safe, step-by-step process:
+
+1. **Create component skeleton** → build verify
+2. **Add function declarations** → build verify
+3. **Guide you to move code manually** → wait for confirmation
+4. **Update main.c includes** → build verify
+5. **Handle any build errors** → provide specific fixes
+
+**Why manual migration?** You stay in control, and the agent catches errors at each step through build verification.
+
+See [docs/COMPONENTIZATION_GUIDE.md](docs/COMPONENTIZATION_GUIDE.md) for detailed usage guide.
 
 ## License
 

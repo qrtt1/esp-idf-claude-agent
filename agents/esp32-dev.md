@@ -56,6 +56,9 @@ User Request
   ├─ Need to modify code? ──→ Phase: FIX
   │    "fix bug" "implement feature" "optimize"
   │
+  ├─ Code refactoring / componentization? ──→ Phase: COMPONENTIZE
+  │    "analyze code structure" "split into components" "refactor"
+  │
   └─ Development iteration (full cycle)? ──→ Phase: LOOP
        "help me develop XXX feature" "make this work"
 ```
@@ -71,6 +74,8 @@ Each phase maps to a prompt file in `skills/esp32-dev/sub-agents/`:
 | ANALYZE | `skills/esp32-dev/sub-agents/log-analyzer.md` | Explore | haiku | Parse logs, produce structured diagnostics | Reads log.txt, exits after analysis |
 | FIND_EXAMPLE | `skills/esp32-dev/sub-agents/example-finder.md` | Explore | haiku | Extract code patterns from ESP-IDF examples | Reads examples, exits after extraction |
 | FIX | `skills/esp32-dev/sub-agents/fixer.md` | general-purpose | sonnet | Fix code based on diagnostics + examples | Modifies code, exits after changes |
+| ANALYZE_CODE | `skills/esp32-dev/sub-agents/code-advisor.md` | Explore | haiku | Analyze code structure, identify module boundaries | Returns refactoring suggestions |
+| CREATE_COMPONENT | `skills/esp32-dev/sub-agents/component-helper.md` | general-purpose | sonnet | Guide user through component creation with build verification | Interactive, multi-step with user input |
 
 ### Dispatch Steps
 
@@ -145,6 +150,132 @@ After each iteration, record:
 - Error summary (if any)
 
 Pass this info to next round's FIX sub-agent so it knows the context.
+
+## COMPONENTIZE Mode (Code Refactoring)
+
+When code grows complex or user requests refactoring, help them split monolithic main.c into reusable components.
+
+### Trigger Conditions
+
+**Automatic triggers** (after successful BUILD):
+- main.c > 200 lines (first suggestion)
+- main.c > 350 lines (stronger suggestion)
+- main.c > 500 lines (urgent recommendation)
+
+**Manual triggers**:
+- User asks: "analyze code structure"
+- User asks: "split into components"
+- User asks: "refactor" or "componentize"
+
+### Two-Phase Process
+
+#### Phase 1: ANALYZE_CODE (code-advisor sub-agent)
+
+1. **Dispatch code-advisor** (Explore + haiku)
+   - Reads main/*.c files
+   - Counts lines, functions
+   - Identifies function groups by patterns
+   - Evaluates refactoring urgency
+
+2. **Present findings to user**
+   ```
+   📊 Code Analysis:
+      - main.c: 350 lines, 18 functions
+
+   💡 Identified Modules:
+      1. wifi_utils (5 functions, ~90 lines)
+      2. api_client (6 functions, ~140 lines)
+      3. beacon_utils (4 functions, ~80 lines)
+
+   ✨ Benefits of componentizing:
+      - Easier maintenance
+      - Reusable in future projects
+      - Better testing isolation
+
+   ❓ Want to proceed with componentization?
+   ```
+
+3. **Wait for user decision**
+   - If user declines → Done, respect choice
+   - If user agrees → Proceed to Phase 2
+
+#### Phase 2: CREATE_COMPONENT (component-helper sub-agent)
+
+**ONE COMPONENT AT A TIME** approach (safest):
+
+For each component (e.g., wifi_utils):
+
+1. **Dispatch component-helper** with:
+   - Component name
+   - List of functions to move
+   - Required dependencies
+
+2. **Component-helper executes**:
+
+   **Step A: Create skeleton**
+   - Create directory structure
+   - Generate CMakeLists.txt
+   - Generate empty .h and .c files
+   - **BUILD VERIFY** (empty component must build)
+
+   **Step B: Add declarations**
+   - Add function declarations to header
+   - Add basic includes
+   - **BUILD VERIFY** (declarations must not break build)
+
+   **Step C: Guide user to move code**
+   - Provide clear instructions
+   - Specify which functions to copy
+   - **WAIT FOR USER CONFIRMATION**
+
+   **Step D: Update main.c**
+   - Instruct user to add #include
+   - Instruct user to remove moved functions
+   - **BUILD VERIFY** (final verification)
+
+   **Step E: Handle errors**
+   - If build fails, analyze error
+   - Provide specific fix (missing include, wrong dependency, etc.)
+   - Re-verify after fix
+
+3. **Report success**
+   ```
+   ✅ Component wifi_utils created successfully!
+      - Functions moved: 5
+      - Lines moved: ~90
+      - Build verified: YES
+
+   📉 main.c size: 350 → 260 lines
+
+   Ready to create next component (api_client)?
+   ```
+
+4. **Repeat for next component** (if user agrees)
+
+### Safety Principles
+
+1. **Never auto-migrate code** - Always guide user to move manually
+2. **Build verification at every step** - Catch errors immediately
+3. **One component at a time** - Reduce risk, easier debugging
+4. **User controls pace** - Can stop anytime, resume later
+5. **Reversible** - User can always revert via git
+
+### State Tracking
+
+Track componentization progress:
+- Which components have been created
+- Which components are planned
+- Last line count when advised
+- Build verification status
+
+Store in orchestrator working memory (no persistent file needed yet).
+
+### When NOT to Suggest Componentization
+
+- Code < 150 lines (too early)
+- Already using component structure (2+ components exist)
+- Last suggestion was < 2 iterations ago (avoid nagging)
+- User explicitly disabled suggestions
 
 ## CRITICAL Rules
 
